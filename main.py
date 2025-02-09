@@ -18,7 +18,7 @@ def get_kptn_recipe(uid, language):
         "User-Agent": "Platform/Android/5.0.1 App/7.2.7",
     }
 
-    res = requests.post(url, headers=headers, json=[{"uid": uid}])   
+    res = requests.post(url, headers=headers, json=[{"uid": uid}])
     if res.status_code != 200 or "title" not in res.json()[0]:
         print(res.text)
         sys.exit(1)
@@ -45,23 +45,23 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
 
     d["working_time"] = data.get("preparationTime", 0)
     d["waiting_time"] = data.get("cookingTime", 0)
-    d["servings"] = 1    
+    d["servings"] = 1
     d["file_path"] = ""  # Is added below
 
     # Parse all steps
     steps = []
-    for step_idx, s in enumerate(data["steps"]):        
+    for step_idx, s in enumerate(data["steps"]):
         # Init data
         step = {}
         step["instruction"] = s["title"]
-        step["step_recipe"] = None        
+        step["step_recipe"] = None
         step["order"] = step_idx
         step["show_as_header"] = True
 
         # Load the step image and upload it to Tandoor
-        img_url = s["image"]["url"]        
+        img_url = s["image"]["url"]
         res = requests.get(img_url , params={"kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6"}, stream=True)
-        bin_data = res.content        
+        bin_data = res.content
         img_name = str(uuid.uuid4())
         files = {'file': (img_name + '.png', bin_data)}
         res = requests.post(host.strip("/") + "/api/user-file/", headers=headers, files=files, data={"name": img_name})
@@ -89,7 +89,7 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
         ings = s.get("ingredients", [])
         for ing_idx, ing in enumerate(ings):
             # Init ingredient
-            ingredient = {}            
+            ingredient = {}
             ingredient["note"] = ""
             ingredient["order"] = ing_idx
             ingredient["is_header"] = False
@@ -105,16 +105,16 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
                 "ignore_shopping": False
             }
 
-            # Init measures and units   
+            # Init measures and units
             ingredient["amount"] = 0
             ingredient["unit"] = None
             ingredient["no_amount"] = True
 
-            # Parse measures and units             
+            # Parse measures and units
             q = "metricQuantity" if units=="metric" else "imperialQuantity"
             m = "metricMeasure" if units=="metric" else "imperialMeasure"
 
-            if "unit" in ing:                
+            if "unit" in ing:
                 ingredient["amount"] = ing["unit"][q]
                 ingredient["no_amount"] = False
                 if "measure" in ing["unit"]:
@@ -122,17 +122,17 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
             elif "quantity" in ing:
                 ingredient["amount"] = ing[q]
                 ingredient["no_amount"] = False
-            
+
             # Add ingredient
             ingredients.append(ingredient)
 
         # Add step
         step["ingredients"] = ingredients
         steps.append(step)
-    
+
     # Add steps
     d["steps"] = steps
-    
+
     # Upload recipe to Tandoor
     recipe_api_url = host.strip("/") + "/api/recipe/"
     res = requests.post(recipe_api_url, headers=headers, json=d)
@@ -144,13 +144,13 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
     tandoor_recipe_json = res.json()
     rid = tandoor_recipe_json["id"]
     img_api_url = host.strip("/") + f"/api/recipe/{rid}/image/"
-    
+
     # Loading the cover image from KptnCook
     for img in data["imageList"]:
         if img["type"] == "cover":
             img_url = img["url"]
             break
-    
+
     res = requests.get(img_url , params={"kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6"}, stream=True)
     bin_data = res.content
 
@@ -174,7 +174,7 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
 @click.argument('host')
 @click.argument('api_key')
 @click.argument('src')
-@click.option('--language', default="de", help='choose the language',
+@click.option('--language', default="en", help='choose the language',
                 type=click.Choice(['de', 'en']))
 @click.option('--units', default="metric", help='choose the untis',
                 type=click.Choice(['metric', 'imperial']))
@@ -187,7 +187,7 @@ def main(host, api_key, src, language, units, with_time):
 
     # Get UID
     uid = src
-    if src.startswith("http"):        
+    if src.startswith("http"):
         print("Try to parse URL")
         res = requests.get(src, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/10.0"})
         u = urlparse(res.url)
@@ -201,7 +201,7 @@ def main(host, api_key, src, language, units, with_time):
     # Parse recipe
     print(f"Start parsing and uploading")
     import_recipe(host, api_key, data[0], with_time=with_time, units=units)
-    
+
     print(f"Done!")
 
 if __name__ == '__main__':
