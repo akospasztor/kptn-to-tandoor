@@ -6,11 +6,12 @@ from urllib.parse import urlparse
 
 # TODO error handling...
 
+
 def get_kptn_recipe(uid, language):
     """ Get the recipe JSON from KptnCook """
 
     # Mby parameter store is important, but until now, it worked fine...
-    url = f"https://mobile.kptncook.com:443/recipes/search?lang={language}&store=de"
+    url = f"https://mobile.kptncook.com:443/recipes/search?lang={language}&store=de"  # noqa: E501
     headers = {
         "hasIngredients": "YES",
         "kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6",
@@ -24,6 +25,7 @@ def get_kptn_recipe(uid, language):
         sys.exit(1)
 
     return res.json()
+
 
 def import_recipe(host, auth, data, with_time=False, units="metric"):
     """ Take the KptnCook JSON and translate it to Tandoor """
@@ -60,11 +62,16 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
 
         # Load the step image and upload it to Tandoor
         img_url = s["image"]["url"]
-        res = requests.get(img_url , params={"kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6"}, stream=True)
+        res = requests.get(img_url,
+                           params={"kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6"},
+                           stream=True)
         bin_data = res.content
         img_name = str(uuid.uuid4())
         files = {'file': (img_name + '.png', bin_data)}
-        res = requests.post(host.strip("/") + "/api/user-file/", headers=headers, files=files, data={"name": img_name})
+        res = requests.post(host.strip("/") + "/api/user-file/",
+                            headers=headers,
+                            files=files,
+                            data={"name": img_name})
         if res.status_code != 201:
             print(res.text)
             sys.exit(1)
@@ -79,10 +86,11 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
             if with_time:
                 step["time"] += t
             if "max" in timer:
-                t_str = f"{ t } - { timer['max'] } min."
+                t_str = f"{t} - {timer['max']} min."
             else:
-                t_str = f"{ t } min."
-            step["instruction"] = step["instruction"].replace("<timer>", t_str, 1)
+                t_str = f"{t} min."
+            step["instruction"] = step["instruction"].replace("<timer>",
+                                                              t_str, 1)
 
         # Parse all ingredients
         ingredients = []
@@ -111,8 +119,8 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
             ingredient["no_amount"] = True
 
             # Parse measures and units
-            q = "metricQuantity" if units=="metric" else "imperialQuantity"
-            m = "metricMeasure" if units=="metric" else "imperialMeasure"
+            q = "metricQuantity" if units == "metric" else "imperialQuantity"
+            m = "metricMeasure" if units == "metric" else "imperialMeasure"
 
             if "unit" in ing:
                 ingredient["amount"] = ing["unit"][q]
@@ -151,7 +159,9 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
             img_url = img["url"]
             break
 
-    res = requests.get(img_url , params={"kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6"}, stream=True)
+    res = requests.get(img_url,
+                       params={"kptnkey": "6q7QNKy-oIgk-IMuWisJ-jfN7s6"},
+                       stream=True)
     bin_data = res.content
 
     # Upload cover image to Tandoor
@@ -164,7 +174,9 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
     # Link cover image with recipe
     tandoor_recipe_json["image"] = host.strip("/") + res.json()["image"]
 
-    res = requests.put(recipe_api_url + str(rid) + "/", headers=headers, json=tandoor_recipe_json)
+    res = requests.put(recipe_api_url + str(rid) + "/",
+                       headers=headers,
+                       json=tandoor_recipe_json)
     if res.status_code != 200:
         print(res.text)
         sys.exit(1)
@@ -174,11 +186,14 @@ def import_recipe(host, auth, data, with_time=False, units="metric"):
 @click.argument('host')
 @click.argument('api_key')
 @click.argument('src')
-@click.option('--language', default="en", help='choose the language',
-                type=click.Choice(['de', 'en']))
-@click.option('--units', default="metric", help='choose the untis',
-                type=click.Choice(['metric', 'imperial']))
-@click.option('--with_time', default=False, help='import time into recipes')
+@click.option('--language', default="en",
+              help='choose the language',
+              type=click.Choice(['de', 'en']))
+@click.option('--units', default="metric",
+              help='choose the untis',
+              type=click.Choice(['metric', 'imperial']))
+@click.option('--with_time', default=False,
+              help='import time into recipes')
 def main(host, api_key, src, language, units, with_time):
     """Request a recipe (<SRC>) from KptnCook and
        import it into the Tandoor cookbook on <HOST>
@@ -189,7 +204,7 @@ def main(host, api_key, src, language, units, with_time):
     uid = src
     if src.startswith("http"):
         print("Try to parse URL")
-        res = requests.get(src, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/10.0"})
+        res = requests.get(src, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:10.0) Gecko/20100101 Firefox/10.0"})  # noqa: E501
         u = urlparse(res.url)
         uid = u.path.split("/")[-1]
         print(f"Loading recipe from {res.url}")
@@ -199,10 +214,11 @@ def main(host, api_key, src, language, units, with_time):
     data = get_kptn_recipe(uid, language)
 
     # Parse recipe
-    print(f"Start parsing and uploading")
+    print("Start parsing and uploading...")
     import_recipe(host, api_key, data[0], with_time=with_time, units=units)
 
-    print(f"Done!")
+    print("Done!")
+
 
 if __name__ == '__main__':
     main()
